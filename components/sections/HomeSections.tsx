@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import { InfoCard } from '@/components/ui/InfoCard';
 import { Baby, Activity, Heart, Bone, Stethoscope, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -7,6 +8,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { DoctorCard, Doctor } from '@/components/ui/DoctorCard';
 import { TestimonialCard } from '@/components/ui/TestimonialCard';
+import { cn } from '@/lib/utils';
 
 // Specializations Data
 const specializations = [
@@ -48,6 +50,67 @@ const iconVariants = {
 };
 
 export function SpecializationsGrid() {
+    const [activeIndex, setActiveIndex] = useState(0);
+    const [isMobile, setIsMobile] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    // Track Mobile State
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    // Auto-scroll logic (Mobile Only)
+    useEffect(() => {
+        if (!isMobile) return;
+
+        const interval = setInterval(() => {
+            if (containerRef.current) {
+                const nextIndex = (activeIndex + 1) % specializations.length;
+                setActiveIndex(nextIndex);
+
+                const container = containerRef.current;
+                const card = container.children[nextIndex] as HTMLElement;
+
+                if (card) {
+                    const scrollLeft = card.offsetLeft - (container.offsetWidth - card.offsetWidth) / 2;
+                    container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+                }
+            }
+        }, 3000); // 3 seconds interval
+
+        return () => clearInterval(interval);
+    }, [activeIndex, isMobile]);
+
+    // Sync active state on manual scroll
+    const handleScroll = () => {
+        if (!isMobile || !containerRef.current) return;
+
+        if (containerRef.current) {
+            const container = containerRef.current;
+            const center = container.scrollLeft + container.offsetWidth / 2;
+
+            let closestIndex = 0;
+            let minDistance = Infinity;
+
+            Array.from(container.children).forEach((child, index) => {
+                const htmlChild = child as HTMLElement;
+                const childCenter = htmlChild.offsetLeft + htmlChild.offsetWidth / 2;
+                const distance = Math.abs(childCenter - center);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestIndex = index;
+                }
+            });
+
+            if (closestIndex !== activeIndex) {
+                setActiveIndex(closestIndex);
+            }
+        }
+    };
+
     return (
         <section className="py-24 bg-white relative overflow-hidden">
             {/* Background Pattern */}
@@ -71,40 +134,66 @@ export function SpecializationsGrid() {
                     </Link>
                 </div>
 
-                <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 md:gap-6 md:pb-0 md:mx-0 md:px-0 md:overflow-visible no-scrollbar">
-                    {specializations.map((spec, i) => (
-                        <Link key={i} href={spec.href} className="group relative h-80 perspective-1000 min-w-[85vw] sm:min-w-[300px] md:min-w-0 snap-center">
-                            <motion.div
-                                className="absolute inset-0 bg-gray-50 rounded-[20px] transition-all duration-500 ease-out group-hover:bg-primary group-hover:-translate-y-2 group-hover:shadow-2xl shadow-gray-200 border border-gray-100 group-hover:border-primary overflow-hidden flex flex-col p-8"
-                                whileHover="hover"
-                            >
-                                {/* Icon Background Blob */}
-                                <div className="absolute -right-8 -top-8 w-32 h-32 bg-blue-100/50 rounded-full blur-2xl group-hover:bg-white/10 transition-colors duration-500"></div>
+                <div
+                    ref={containerRef}
+                    onScroll={handleScroll}
+                    className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 md:gap-6 md:pb-0 md:mx-0 md:px-0 md:overflow-visible no-scrollbar"
+                >
+                    {specializations.map((spec, i) => {
+                        const isActive = isMobile && i === activeIndex;
+                        return (
+                            <Link key={i} href={spec.href} className="group relative h-80 perspective-1000 min-w-[85vw] sm:min-w-[300px] md:min-w-0 snap-center">
+                                <motion.div
+                                    className={cn(
+                                        "absolute inset-0 rounded-[20px] transition-all duration-500 ease-out overflow-hidden flex flex-col p-8 border",
+                                        isActive
+                                            ? "bg-primary -translate-y-2 shadow-2xl border-primary"
+                                            : "bg-gray-50 shadow-gray-200 border-gray-100 group-hover:bg-primary group-hover:-translate-y-2 group-hover:shadow-2xl group-hover:border-primary"
+                                    )}
+                                    whileHover="hover"
+                                >
+                                    {/* Icon Background Blob */}
+                                    <div className={cn(
+                                        "absolute -right-8 -top-8 w-32 h-32 rounded-full blur-2xl transition-colors duration-500",
+                                        isActive ? "bg-white/10" : "bg-blue-100/50 group-hover:bg-white/10"
+                                    )}></div>
 
-                                <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary group-hover:text-primary mb-6 relative z-10">
-                                    <motion.div
-                                        variants={{
-                                            hover: iconVariants[spec.animation as keyof typeof iconVariants]
-                                        }}
-                                    >
-                                        <spec.icon size={28} strokeWidth={1.5} />
-                                    </motion.div>
-                                </div>
+                                    <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary mb-6 relative z-10">
+                                        <motion.div
+                                            variants={{
+                                                hover: iconVariants[spec.animation as keyof typeof iconVariants]
+                                            }}
+                                        >
+                                            <spec.icon size={28} strokeWidth={1.5} />
+                                        </motion.div>
+                                    </div>
 
-                                <h3 className="text-xl font-bold text-text-primary group-hover:text-white mb-3 transition-colors duration-300 leading-snug">
-                                    {spec.title}
-                                </h3>
+                                    <h3 className={cn(
+                                        "text-xl font-bold mb-3 transition-colors duration-300 leading-snug",
+                                        isActive ? "text-white" : "text-text-primary group-hover:text-white"
+                                    )}>
+                                        {spec.title}
+                                    </h3>
 
-                                <p className="text-text-muted text-sm leading-relaxed group-hover:text-white/80 transition-colors duration-300">
-                                    {spec.description}
-                                </p>
+                                    <p className={cn(
+                                        "text-sm leading-relaxed transition-colors duration-300",
+                                        isActive ? "text-white/80" : "text-text-muted group-hover:text-white/80"
+                                    )}>
+                                        {spec.description}
+                                    </p>
 
-                                <div className="mt-auto flex items-center text-primary font-semibold text-sm opacity-0 transform translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 group-hover:text-white delay-100">
-                                    Explore <ArrowRight size={16} className="ml-2" />
-                                </div>
-                            </motion.div>
-                        </Link>
-                    ))}
+                                    <div className={cn(
+                                        "mt-auto flex items-center font-semibold text-sm transition-all duration-300 delay-100",
+                                        isActive
+                                            ? "text-white opacity-100 translate-y-0"
+                                            : "text-primary opacity-0 transform translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 group-hover:text-white"
+                                    )}>
+                                        Explore <ArrowRight size={16} className="ml-2" />
+                                    </div>
+                                </motion.div>
+                            </Link>
+                        );
+                    })}
                 </div>
             </div>
         </section>
@@ -120,6 +209,38 @@ const doctors: Doctor[] = [
 ];
 
 export function DoctorsPreview() {
+    const [activeIndex, setActiveIndex] = useState(0);
+    const [isMobile, setIsMobile] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    // Track Mobile State
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    // Auto-scroll logic (Mobile Only)
+    useEffect(() => {
+        if (!isMobile) return;
+
+        const interval = setInterval(() => {
+            if (containerRef.current) {
+                const nextIndex = (activeIndex + 1) % doctors.length;
+                setActiveIndex(nextIndex);
+
+                const container = containerRef.current;
+                const card = container.children[nextIndex] as HTMLElement;
+                if (card) {
+                    const scrollLeft = card.offsetLeft - (container.offsetWidth - card.offsetWidth) / 2;
+                    container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+                }
+            }
+        }, 4000);
+        return () => clearInterval(interval);
+    }, [activeIndex, isMobile]);
+
     return (
         <section className="py-24 bg-white relative">
             <div className="container mx-auto px-4 md:px-6">
@@ -137,7 +258,10 @@ export function DoctorsPreview() {
                     </Link>
                 </div>
 
-                <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-8 md:pb-0 md:mx-0 md:px-0 md:overflow-visible no-scrollbar">
+                <div
+                    ref={containerRef}
+                    className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-8 md:pb-0 md:mx-0 md:px-0 md:overflow-visible no-scrollbar"
+                >
                     {doctors.map(doc => (
                         <div key={doc.id} className="min-w-[85vw] sm:min-w-[300px] md:min-w-0 snap-center">
                             <DoctorCard doctor={doc} />
