@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 
+import { MobileNav } from "@/components/layout/MobileNav";
+
 const manrope = Manrope({
   variable: "--font-manrope",
   subsets: ["latin"],
@@ -21,9 +23,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${manrope.variable} antialiased bg-background text-text-primary font-sans`}
+        className={`${manrope.variable} antialiased bg-background text-text-primary font-sans pb-24 md:pb-0`}
       >
         {children}
+        <MobileNav />
       </body>
     </html>
   );

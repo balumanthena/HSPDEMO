@@ -9,7 +9,7 @@ export function Hero() {
             {/* Background Image */}
             <div className="absolute inset-0 z-0">
                 <Image
-                    src="/hero-bg-2.jpg"
+                    src="/team-young-specialist-doctors-standing-corridor-hospital.jpg"
                     alt="Stork Hospital Team"
                     fill
                     className="object-cover object-[center_30%]"

@@ -71,9 +71,9 @@ export function SpecializationsGrid() {
                     </Link>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 md:gap-6 md:pb-0 md:mx-0 md:px-0 md:overflow-visible no-scrollbar">
                     {specializations.map((spec, i) => (
-                        <Link key={i} href={spec.href} className="group relative h-80 perspective-1000">
+                        <Link key={i} href={spec.href} className="group relative h-80 perspective-1000 min-w-[85vw] sm:min-w-[300px] md:min-w-0 snap-center">
                             <motion.div
                                 className="absolute inset-0 bg-gray-50 rounded-[20px] transition-all duration-500 ease-out group-hover:bg-primary group-hover:-translate-y-2 group-hover:shadow-2xl shadow-gray-200 border border-gray-100 group-hover:border-primary overflow-hidden flex flex-col p-8"
                                 whileHover="hover"
@@ -137,9 +137,11 @@ export function DoctorsPreview() {
                     </Link>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-8 md:pb-0 md:mx-0 md:px-0 md:overflow-visible no-scrollbar">
                     {doctors.map(doc => (
-                        <DoctorCard key={doc.id} doctor={doc} />
+                        <div key={doc.id} className="min-w-[85vw] sm:min-w-[300px] md:min-w-0 snap-center">
+                            <DoctorCard doctor={doc} />
+                        </div>
                     ))}
                 </div>
             </div>
