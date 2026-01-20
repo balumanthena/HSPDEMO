@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from '@/components/ui/Button';
 import { Calendar, CheckCircle2, ShieldCheck, Clock, User } from 'lucide-react';
 
 export default function BookAppointment() {
+    const [departments, setDepartments] = useState<any[]>([]);
+    const [doctors, setDoctors] = useState<any[]>([]);
+    const [filteredDoctors, setFilteredDoctors] = useState<any[]>([]);
+
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
@@ -18,10 +23,70 @@ export default function BookAppointment() {
         consent: false
     });
 
+    const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const { data: deptData } = await supabase.from('departments').select('*');
+            if (deptData) setDepartments(deptData);
+
+            const { data: docData } = await supabase.from('doctors').select('*');
+            if (docData) setDoctors(docData);
+        };
+        fetchData();
+
+        // Realtime Subscription for Doctors
+        const channel = supabase
+            .channel('public:doctors')
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'doctors' },
+                (payload) => {
+                    setDoctors((currentDoctors) =>
+                        currentDoctors.map((doc) =>
+                            doc.id === payload.new.id ? payload.new : doc
+                        )
+                    );
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
+
+    // Filter doctors when department changes
+    useEffect(() => {
+        if (formData.department) {
+            setFilteredDoctors(doctors.filter(doc => doc.specialization === formData.department));
+        } else {
+            setFilteredDoctors(doctors);
+        }
+    }, [formData.department, doctors]);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        // Handle submission logic
-        alert('Appointment request submitted!');
+
+        const message = `*New Appointment Request*
+        
+*Name:* ${formData.name}
+*Phone:* ${formData.phone}
+*Department:* ${formData.department}
+*Doctor:* ${formData.doctor || 'Any Available'}
+*Date:* ${formData.date}
+*Time:* ${formData.time}
+*Symptoms:* ${formData.notes}
+
+Please confirm my appointment.`;
+
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappUrl = `https://wa.me/919494408050?text=${encodedMessage}`;
+
+        window.open(whatsappUrl, '_blank');
     };
 
     return (
@@ -45,6 +110,8 @@ export default function BookAppointment() {
                                             required
                                             className="w-full pl-10 pr-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                                             placeholder="John Doe"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         />
                                     </div>
                                 </div>
@@ -56,6 +123,8 @@ export default function BookAppointment() {
                                         required
                                         className="w-full px-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                                         placeholder="+91 98765 43210"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                     />
                                 </div>
                             </div>
@@ -63,21 +132,31 @@ export default function BookAppointment() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-text-primary">Department</label>
-                                    <select className="w-full px-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none bg-white">
+                                    <select
+                                        className="w-full px-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none bg-white"
+                                        value={formData.department}
+                                        onChange={(e) => setFormData({ ...formData, department: e.target.value, doctor: '' })}
+                                    >
                                         <option value="">Select Department</option>
-                                        <option value="cardiology">Cardiology</option>
-                                        <option value="pediatrics">Pediatrics</option>
-                                        <option value="gynecology">Gynecology</option>
-                                        <option value="orthopedics">Orthopedics</option>
+                                        {departments.map(dept => (
+                                            <option key={dept.id} value={dept.title}>{dept.title}</option>
+                                        ))}
                                     </select>
                                 </div>
 
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-text-primary">Doctor (Optional)</label>
-                                    <select className="w-full px-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none bg-white">
+                                    <select
+                                        className="w-full px-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none bg-white"
+                                        value={formData.doctor}
+                                        onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
+                                    >
                                         <option value="">Any Available Doctor</option>
-                                        <option value="dr-sarah">Dr. Sarah Wilson</option>
-                                        <option value="dr-james">Dr. James Chen</option>
+                                        {filteredDoctors.map(doc => (
+                                            <option key={doc.id} value={doc.name}>
+                                                {doc.name} {doc.availability && doc.availability !== 'Available' ? `(${doc.availability})` : ''}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
@@ -91,6 +170,8 @@ export default function BookAppointment() {
                                             type="date"
                                             required
                                             className="w-full pl-10 pr-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none"
+                                            value={formData.date}
+                                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                                         />
                                     </div>
                                 </div>
@@ -99,7 +180,11 @@ export default function BookAppointment() {
                                     <label className="text-sm font-medium text-text-primary">Preferred Time</label>
                                     <div className="relative">
                                         <Clock className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
-                                        <select className="w-full pl-10 pr-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none bg-white">
+                                        <select
+                                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none bg-white"
+                                            value={formData.time}
+                                            onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                                        >
                                             <option value="">Select Time Slot</option>
                                             <option value="morning">Morning (9 AM - 12 PM)</option>
                                             <option value="afternoon">Afternoon (12 PM - 4 PM)</option>
@@ -115,6 +200,8 @@ export default function BookAppointment() {
                                     rows={3}
                                     className="w-full px-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none resize-none"
                                     placeholder="Briefly describe your health concern..."
+                                    value={formData.notes}
+                                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                                 ></textarea>
                             </div>
 
@@ -124,6 +211,8 @@ export default function BookAppointment() {
                                     id="consent"
                                     className="mt-1 w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
                                     required
+                                    checked={formData.consent}
+                                    onChange={(e) => setFormData({ ...formData, consent: e.target.checked })}
                                 />
                                 <label htmlFor="consent" className="text-sm text-text-muted">
                                     I confirm that the information provided is accurate and I agree to the <a href="#" className="text-primary hover:underline">Terms of Service</a> & <a href="#" className="text-primary hover:underline">Privacy Policy</a>.

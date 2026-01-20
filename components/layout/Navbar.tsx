@@ -12,6 +12,8 @@ const navLinks = [
     { name: 'Specializations', href: '/specializations' },
     { name: 'Doctors', href: '/doctors' },
     { name: 'Diagnostics', href: '/diagnostics' },
+    { name: 'Blog', href: '/blog' },
+    { name: 'Videos', href: '/videos' },
     { name: 'About', href: '/about' },
 ];
 
