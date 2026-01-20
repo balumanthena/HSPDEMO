@@ -2,15 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
-import { getUserRole, canPublish, canEditSEO } from '@/lib/auth';
 
 export default function NewBlogPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const blogId = searchParams.get('id');
+
     const [loading, setLoading] = useState(false);
+    const [fetching, setFetching] = useState(!!blogId);
     const [role, setRole] = useState<string | null>(null);
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,15 +30,38 @@ export default function NewBlogPage() {
     });
 
     useEffect(() => {
-        const checkRole = async () => {
+        const checkRoleAndFetchBlog = async () => {
+            // Fetch Role
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
                 setRole(profile?.role || 'doctor');
             }
+
+            // Fetch Blog if ID exists
+            if (blogId) {
+                setFetching(true);
+                const { data: blog, error } = await supabase
+                    .from('blogs')
+                    .select('*')
+                    .eq('id', blogId)
+                    .single();
+
+                if (blog) {
+                    setFormData({
+                        title: blog.title || '',
+                        content: blog.content || '',
+                        image: blog.image || '',
+                        seo_title: blog.seo_title || '',
+                        seo_description: blog.seo_description || '',
+                        status: blog.status || 'draft'
+                    });
+                }
+                setFetching(false);
+            }
         };
-        checkRole();
-    }, []);
+        checkRoleAndFetchBlog();
+    }, [blogId]);
 
     const slugify = (text: string) => {
         return text.toString().toLowerCase()
@@ -51,20 +77,38 @@ export default function NewBlogPage() {
         setLoading(true);
 
         const slug = slugify(formData.title);
-
-        const { error } = await supabase.from('blogs').insert({
+        const payload = {
             ...formData,
-            slug,
-            created_at: new Date().toISOString()
-        });
+            slug: blogId ? undefined : slug, // Don't update slug on edit to preserve SEO
+            ...(blogId ? {} : { created_at: new Date().toISOString() }) // Keep original created_at
+        };
+
+        let error;
+
+        if (blogId) {
+            const { error: updateError } = await supabase
+                .from('blogs')
+                .update(payload)
+                .eq('id', blogId);
+            error = updateError;
+        } else {
+            const { error: insertError } = await supabase
+                .from('blogs')
+                .insert(payload);
+            error = insertError;
+        }
 
         if (error) {
-            alert('Error creating blog: ' + error.message);
+            alert('Error saving blog: ' + error.message);
         } else {
             router.push('/admin/blogs');
         }
         setLoading(false);
     };
+
+    if (fetching) {
+        return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading editor...</div>;
+    }
 
     const isAdmin = role === 'admin';
     const isSEO = role === 'seo_editor' || isAdmin;
@@ -155,7 +199,7 @@ export default function NewBlogPage() {
                             >
                                 <option value="draft">Draft</option>
                                 <option value="review">Submit for Review</option>
-                                {isAdmin && <option value="published">Published</option>}
+                                <option value="published">Published</option>
                             </select>
                         </div>
                     </div>

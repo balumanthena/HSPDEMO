@@ -26,7 +26,6 @@ export default function AdminSettingsPage() {
         opd_start_time: '',
         opd_end_time: ''
     });
-    const [hasPendingRequest, setHasPendingRequest] = useState(false);
 
     const router = useRouter();
     const supabase = createBrowserClient(
@@ -51,8 +50,8 @@ export default function AdminSettingsPage() {
         const userRole = profile?.role || 'doctor';
         setRole(userRole);
 
-        if (userRole === 'doctor' && profile?.doctor_id) {
-            // Fetch Doctor Data
+        if (profile?.doctor_id) {
+            // Fetch Doctor Data irrespective of role if doctor_id is present
             const { data: doctor } = await supabase.from('doctors').select('*').eq('id', profile.doctor_id).single();
             if (doctor) {
                 setDoctorProfile(doctor);
@@ -64,16 +63,6 @@ export default function AdminSettingsPage() {
                     opd_end_time: doctor.opd_end_time || ''
                 });
             }
-
-            // Check for pending requests
-            const { data: pending } = await supabase
-                .from('doctor_profile_changes')
-                .select('id')
-                .eq('doctor_id', profile.doctor_id)
-                .eq('status', 'pending')
-                .single();
-
-            if (pending) setHasPendingRequest(true);
         }
 
         setLoading(false);
@@ -97,7 +86,7 @@ export default function AdminSettingsPage() {
         setIsUpdating(false);
     };
 
-    const handleRequestChange = async (e: React.FormEvent) => {
+    const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!doctorProfile) return;
 
@@ -116,17 +105,17 @@ export default function AdminSettingsPage() {
             return;
         }
 
-        const { error } = await supabase.from('doctor_profile_changes').insert({
-            doctor_id: doctorProfile.id,
-            changed_fields: changes,
-            status: 'pending'
-        });
+        const { error } = await supabase
+            .from('doctors')
+            .update(changes)
+            .eq('id', doctorProfile.id);
 
         if (!error) {
-            setHasPendingRequest(true);
-            alert("Change request submitted for approval.");
+            // Update local state
+            setDoctorProfile({ ...doctorProfile, ...changes });
+            alert("Profile updated successfully");
         } else {
-            alert("Error submitting request: " + error.message);
+            alert("Error updating profile: " + error.message);
         }
         setIsUpdating(false);
     };
@@ -196,12 +185,12 @@ export default function AdminSettingsPage() {
                                     </div>
                                     <div>
                                         <h3 className="text-xl font-bold text-slate-900">
-                                            {isDoctor ? doctorProfile?.name || 'Doctor Name' : 'Administrator'}
+                                            {doctorProfile ? doctorProfile.name || 'Doctor Name' : 'Administrator'}
                                         </h3>
                                         <p className="text-slate-500 text-sm">{user?.email}</p>
-                                        {isDoctor && <p className="text-xs text-blue-600 font-medium mt-1 uppercase tracking-wide">{doctorProfile?.specialization || 'General'}</p>}
+                                        {doctorProfile && <p className="text-xs text-blue-600 font-medium mt-1 uppercase tracking-wide">{doctorProfile.specialization || 'General'}</p>}
                                     </div>
-                                    {!isDoctor && (
+                                    {!doctorProfile && (
                                         <Button className="ml-auto h-10 px-4 text-sm bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm">
                                             Change Photo
                                         </Button>
@@ -209,27 +198,14 @@ export default function AdminSettingsPage() {
                                 </div>
 
                                 {/* Form Section */}
-                                {isDoctor ? (
-                                    <form onSubmit={handleRequestChange} className="space-y-6">
-                                        {hasPendingRequest && (
-                                            <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-start gap-3">
-                                                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                                                <div>
-                                                    <h4 className="font-bold text-amber-900 text-sm">Change Request Pending</h4>
-                                                    <p className="text-amber-700/80 text-xs mt-1">
-                                                        You have already submitted a request to update your profile. Please wait for admin approval before making further changes.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
-
+                                {doctorProfile ? (
+                                    <form onSubmit={handleUpdateProfile} className="space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-1">
                                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Display Name</label>
                                                 <input
                                                     type="text"
-                                                    disabled={hasPendingRequest}
-                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:opacity-60"
+                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                                                     value={changeRequest.name}
                                                     onChange={e => setChangeRequest({ ...changeRequest, name: e.target.value })}
                                                 />
@@ -238,26 +214,23 @@ export default function AdminSettingsPage() {
                                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Specialization</label>
                                                 <input
                                                     type="text"
-                                                    disabled={hasPendingRequest}
-                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:opacity-60"
+                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                                                     value={changeRequest.specialization}
                                                     onChange={e => setChangeRequest({ ...changeRequest, specialization: e.target.value })}
                                                 />
                                             </div>
                                             <div className="md:col-span-2 space-y-1">
-                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Start Time</label>
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Start Time & End Time</label>
                                                 <div className="flex gap-4">
                                                     <input
                                                         type="time"
-                                                        disabled={hasPendingRequest}
-                                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:opacity-60"
+                                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                                                         value={changeRequest.opd_start_time}
                                                         onChange={e => setChangeRequest({ ...changeRequest, opd_start_time: e.target.value })}
                                                     />
                                                     <input
                                                         type="time"
-                                                        disabled={hasPendingRequest}
-                                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:opacity-60"
+                                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                                                         value={changeRequest.opd_end_time}
                                                         onChange={e => setChangeRequest({ ...changeRequest, opd_end_time: e.target.value })}
                                                     />
@@ -267,8 +240,7 @@ export default function AdminSettingsPage() {
                                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Biography</label>
                                                 <textarea
                                                     rows={4}
-                                                    disabled={hasPendingRequest}
-                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:opacity-60"
+                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                                                     value={changeRequest.about}
                                                     onChange={e => setChangeRequest({ ...changeRequest, about: e.target.value })}
                                                 />
@@ -277,10 +249,10 @@ export default function AdminSettingsPage() {
 
                                         <div className="pt-4 flex justify-end">
                                             <Button
-                                                disabled={hasPendingRequest || isUpdating}
+                                                disabled={isUpdating}
                                                 className="bg-slate-900 text-white rounded-xl px-8 shadow-lg shadow-slate-900/20"
                                             >
-                                                {isUpdating ? <Loader2 className="animate-spin" /> : hasPendingRequest ? 'Request Pending' : 'Request Changes'}
+                                                {isUpdating ? <Loader2 className="animate-spin" /> : 'Save Changes'}
                                             </Button>
                                         </div>
                                     </form>
