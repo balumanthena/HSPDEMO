@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/Button';
 
 export default function AdminLoginPage() {
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState(false);
     const router = useRouter();
 
     const supabase = createBrowserClient(
@@ -21,20 +21,18 @@ export default function AdminLoginPage() {
         e.preventDefault();
         setLoading(true);
         setError(null);
-        setSuccess(false);
 
         try {
-            const { error } = await supabase.auth.signInWithOtp({
+            const { error } = await supabase.auth.signInWithPassword({
                 email,
-                options: {
-                    emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
-                },
+                password,
             });
 
             if (error) throw error;
-            setSuccess(true);
+            router.push('/admin/dashboard');
+            router.refresh();
         } catch (err: any) {
-            setError(err.message || 'Failed to send magic link');
+            setError(err.message || 'Failed to sign in');
         } finally {
             setLoading(false);
         }
@@ -48,7 +46,7 @@ export default function AdminLoginPage() {
                         <HeartPulse size={32} />
                     </div>
                     <h1 className="text-2xl font-bold text-gray-900">Doctor Login</h1>
-                    <p className="text-gray-500 mt-2">Enter your email to receive a magic link</p>
+                    <p className="text-gray-500 mt-2">Enter your credentials to access the dashboard</p>
                 </div>
 
                 {error && (
@@ -58,32 +56,43 @@ export default function AdminLoginPage() {
                     </div>
                 )}
 
-                {success && (
-                    <div className="mb-6 p-4 bg-green-50 text-green-600 rounded-lg text-sm flex items-center gap-2">
-                        <AlertCircle size={16} />
-                        Check your email for the magic link!
+                <form onSubmit={handleLogin} className="space-y-6">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                        <input
+                            type="email"
+                            required
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                            placeholder="doctor@hospital.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                        />
                     </div>
-                )}
 
-                {!success && (
-                    <form onSubmit={handleLogin} className="space-y-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                            <input
-                                type="email"
-                                required
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                placeholder="doctor@hospital.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                            />
+                    <div>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium text-gray-700">Password</label>
+                            <a
+                                href="/auth/forgot-password"
+                                className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                            >
+                                Forgot password?
+                            </a>
                         </div>
+                        <input
+                            type="password"
+                            required
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                        />
+                    </div>
 
-                        <Button className="w-full h-12 text-base rounded-xl" disabled={loading}>
-                            {loading ? <Loader2 className="animate-spin mr-2" /> : 'Send Magic Link'}
-                        </Button>
-                    </form>
-                )}
+                    <Button className="w-full h-12 text-base rounded-xl" disabled={loading}>
+                        {loading ? <Loader2 className="animate-spin mr-2" /> : 'Sign In'}
+                    </Button>
+                </form>
 
                 <div className="mt-8 text-center">
                     <p className="text-xs text-gray-400">

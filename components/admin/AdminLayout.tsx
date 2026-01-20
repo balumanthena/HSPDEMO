@@ -13,6 +13,7 @@ const sidebarLinks = [
     { name: 'Doctors', href: '/admin/doctors', icon: Users },
     { name: 'Blogs', href: '/admin/blogs', icon: FileText },
     { name: 'Videos', href: '/admin/videos', icon: Youtube },
+    { name: 'Requests', href: '/admin/requests', icon: FileText },
     { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
