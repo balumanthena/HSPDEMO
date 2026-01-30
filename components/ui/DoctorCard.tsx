@@ -24,7 +24,7 @@ interface DoctorCardProps {
 export function DoctorCard({ doctor, className }: DoctorCardProps) {
     return (
         <div className={cn(
-            "group bg-white rounded-2xl overflow-hidden transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 border border-gray-100 flex flex-col h-full",
+            "group bg-white rounded-[2rem] overflow-hidden transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 border border-slate-100 flex flex-col h-full",
             className
         )}>
             {/* Image Container */}

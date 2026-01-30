@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { PageHeader } from '@/components/ui/PageHeader';
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import Image from "next/image";
@@ -74,56 +75,52 @@ export default async function BlogListingPage() {
         <main className="min-h-screen bg-gray-50 flex flex-col">
             <Navbar />
 
-            <div className="bg-white pt-32 pb-16 border-b border-gray-100">
-                <div className="container mx-auto px-4 md:px-6 text-center">
-                    <span className="text-secondary font-semibold tracking-widest text-sm uppercase mb-2 block">Health Insights</span>
-                    <h1 className="text-4xl font-bold text-text-primary mb-6">Medical Blog & News</h1>
-                    <p className="max-w-3xl mx-auto text-text-muted text-lg">
-                        Expert medical advice, health tips, and hospital updates directly from our specialists.
-                    </p>
-                </div>
-            </div>
+            <PageHeader
+                title="Medical Blog"
+                highlight="& Insights"
+                description="Expert medical advice, latest health tips, and hospital updates directly from our specialists."
+            />
 
-            <div className="container mx-auto px-4 md:px-6 py-16 flex-grow">
+            <div className="container mx-auto px-4 md:px-6 relative z-20 -mt-12 md:-mt-24 mb-12 md:mb-24">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {blogs.map((blog: any) => (
-                        <Link key={blog.id} href={`/blog/${blog.slug}`} className="group flex flex-col h-full bg-white rounded-2xl overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-                            <div className="relative h-60 w-full overflow-hidden bg-gray-100">
+                        <Link key={blog.id} href={`/blog/${blog.slug}`} className="group flex flex-col h-full bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-xl shadow-slate-200/50 transition-all duration-500 hover:shadow-2xl hover:scale-[1.02]">
+                            <div className="relative h-64 w-full overflow-hidden bg-slate-100">
                                 {blog.image ? (
                                     <Image
                                         src={blog.image}
                                         alt={blog.title}
                                         fill
-                                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                        className="object-cover transition-transform duration-700 group-hover:scale-110"
                                     />
                                 ) : (
-                                    <div className="flex items-center justify-center h-full text-text-muted/20">
+                                    <div className="flex items-center justify-center h-full text-slate-300">
                                         <FileText size={64} />
                                     </div>
                                 )}
-                                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold text-primary shadow-sm flex items-center gap-1">
-                                    <Calendar size={12} />
+                                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-bold text-slate-900 shadow-lg flex items-center gap-1.5">
+                                    <Calendar size={12} className="text-secondary" />
                                     {new Date(blog.created_at).toLocaleDateString()}
                                 </div>
                             </div>
 
-                            <div className="p-6 flex flex-col flex-grow">
-                                <h2 className="text-xl font-bold text-text-primary mb-3 line-clamp-2 group-hover:text-primary transition-colors">
+                            <div className="p-8 flex flex-col flex-grow">
+                                <h2 className="text-2xl font-bold text-slate-900 mb-4 line-clamp-2 group-hover:text-primary transition-colors font-serif">
                                     {blog.title}
                                 </h2>
-                                <p className="text-text-muted text-sm line-clamp-3 mb-6 flex-grow">
+                                <p className="text-slate-500 text-sm leading-relaxed line-clamp-3 mb-8 flex-grow">
                                     {blog.description || blog.content.substring(0, 150) + '...'}
                                 </p>
 
-                                <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-50">
-                                    <div className="flex items-center gap-2 text-xs text-text-muted font-medium">
-                                        <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+                                <div className="flex items-center justify-between mt-auto pt-6 border-t border-slate-50">
+                                    <div className="flex items-center gap-2 text-xs text-slate-500 font-bold uppercase tracking-wider">
+                                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
                                             <User size={14} />
                                         </div>
                                         {blog.doctor?.name || 'Stork Team'}
                                     </div>
-                                    <span className="text-primary text-sm font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
-                                        Read Article <ArrowRight size={14} />
+                                    <span className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-900 group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                                        <ArrowRight size={18} />
                                     </span>
                                 </div>
                             </div>

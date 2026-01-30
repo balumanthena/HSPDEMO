@@ -1,10 +1,10 @@
 'use client';
 
 import { createBrowserClient } from '@supabase/ssr';
-import { User, Lock, Bell, Shield, LogOut, Mail, Phone, MapPin, Loader2, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/Button';
+import { User, Lock, Bell, Shield, LogOut, Mail, Phone, MapPin, Loader2, FileText, CheckCircle2, AlertCircle, Upload, Image as ImageIcon } from 'lucide-react';
 
 export default function AdminSettingsPage() {
     const [user, setUser] = useState<any>(null);
@@ -26,6 +26,15 @@ export default function AdminSettingsPage() {
         opd_start_time: '',
         opd_end_time: ''
     });
+
+    // Site Settings State (Logo)
+    const [siteLogo, setSiteLogo] = useState<string | null>(null);
+    const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+    const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+
+    // Refs for file inputs
+    const photoInputRef = useRef<HTMLInputElement>(null);
+    const logoInputRef = useRef<HTMLInputElement>(null);
 
     const router = useRouter();
     const supabase = createBrowserClient(
@@ -65,8 +74,109 @@ export default function AdminSettingsPage() {
             }
         }
 
+        // Fetch Site Settings (Logo)
+        const { data: settings } = await supabase.from('site_settings').select('value').eq('key', 'site_logo').single();
+        if (settings?.value?.url) {
+            setSiteLogo(settings.value.url);
+        }
+
         setLoading(false);
     }
+
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+        const file = e.target.files[0];
+        setIsUploadingPhoto(true);
+
+        try {
+            // 1. Upload to Supabase Storage
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            // 2. Get Public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+
+            // 3. Update Database or User Metadata
+            if (doctorProfile) {
+                // Update doctor record
+                const { error: dbError } = await supabase
+                    .from('doctors')
+                    .update({ image: publicUrl })
+                    .eq('id', doctorProfile.id);
+
+                if (dbError) throw dbError;
+                setDoctorProfile({ ...doctorProfile, image: publicUrl });
+            } else {
+                // Update auth user metadata for admins
+                const { error: authError } = await supabase.auth.updateUser({
+                    data: { avatar_url: publicUrl }
+                });
+
+                if (authError) throw authError;
+                // Refresh local user state to reflect change
+                const { data: { user: updatedUser } } = await supabase.auth.getUser();
+                setUser(updatedUser);
+            }
+
+            alert("Profile photo updated successfully!");
+        } catch (error: any) {
+            console.error("Error uploading photo:", error);
+            alert("Failed to upload photo: " + error.message);
+        } finally {
+            setIsUploadingPhoto(false);
+        }
+    };
+
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+        const file = e.target.files[0];
+        setIsUploadingLogo(true);
+
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `site-logo-${Date.now()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            // 1. Upload to assets bucket
+            const { error: uploadError } = await supabase.storage
+                .from('assets')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            // 2. Get Public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('assets')
+                .getPublicUrl(filePath);
+
+            // 3. Update site_settings table
+            const { error: dbError } = await supabase
+                .from('site_settings')
+                .upsert({
+                    key: 'site_logo',
+                    value: { url: publicUrl, updated_at: new Date().toISOString() }
+                });
+
+            if (dbError) throw dbError;
+
+            setSiteLogo(publicUrl);
+            alert("Site logo updated successfully! Reload the page to see changes.");
+        } catch (error: any) {
+            console.error("Error uploading logo:", error);
+            alert("Failed to upload logo: " + error.message);
+        } finally {
+            setIsUploadingLogo(false);
+        }
+    };
 
     const handlePasswordUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -178,10 +288,16 @@ export default function AdminSettingsPage() {
 
                                 {/* Identity Section */}
                                 <div className="flex items-center gap-6 mb-8">
-                                    <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center text-slate-300 text-2xl font-bold border-4 border-white shadow-lg overflow-hidden relative">
+                                    <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center text-slate-300 text-2xl font-bold border-4 border-white shadow-lg overflow-hidden relative group cursor-pointer" onClick={() => photoInputRef.current?.click()}>
                                         {doctorProfile?.image
                                             ? <img src={doctorProfile.image} alt={doctorProfile.name} className="w-full h-full object-cover" />
-                                            : (user?.email?.[0].toUpperCase() || 'DR')}
+                                            : (user?.user_metadata?.avatar_url
+                                                ? <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                                                : (user?.email?.[0].toUpperCase() || 'DR'))
+                                        }
+                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Upload className="w-6 h-6 text-white" />
+                                        </div>
                                     </div>
                                     <div>
                                         <h3 className="text-xl font-bold text-slate-900">
@@ -190,11 +306,20 @@ export default function AdminSettingsPage() {
                                         <p className="text-slate-500 text-sm">{user?.email}</p>
                                         {doctorProfile && <p className="text-xs text-blue-600 font-medium mt-1 uppercase tracking-wide">{doctorProfile.specialization || 'General'}</p>}
                                     </div>
-                                    {!doctorProfile && (
-                                        <Button className="ml-auto h-10 px-4 text-sm bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm">
-                                            Change Photo
-                                        </Button>
-                                    )}
+                                    <input
+                                        type="file"
+                                        ref={photoInputRef}
+                                        className="hidden"
+                                        accept="image/*"
+                                        onChange={handlePhotoUpload}
+                                    />
+                                    <Button
+                                        onClick={() => photoInputRef.current?.click()}
+                                        disabled={isUploadingPhoto}
+                                        className="ml-auto h-10 px-4 text-sm bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm"
+                                    >
+                                        {isUploadingPhoto ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Change Photo'}
+                                    </Button>
                                 </div>
 
                                 {/* Form Section */}
@@ -276,6 +401,60 @@ export default function AdminSettingsPage() {
                                 )}
                             </div>
 
+                            {/* Appearance Options (Site Logo) */}
+                            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/50 p-8">
+                                <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                                    <ImageIcon className="w-5 h-5 text-slate-400" />
+                                    Appearance & Branding
+                                </h2>
+
+                                <div className="flex items-center gap-6">
+                                    <div className="w-24 h-24 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center relative overflow-hidden group">
+                                        {siteLogo ? (
+                                            <img src={siteLogo} alt="Site Logo" className="w-full h-full object-contain p-2" />
+                                        ) : (
+                                            <span className="text-xs text-slate-400 font-medium text-center px-2">No Logo</span>
+                                        )}
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
+                                            {/* Overlay if needed */}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2 flex-1">
+                                        <h3 className="text-sm font-bold text-slate-900">Website Logo</h3>
+                                        <p className="text-xs text-slate-500 max-w-sm">
+                                            Upload your hospital's logo. This will be displayed in the navigation bar and footer. Recommended size: 200x200px (PNG or SVG).
+                                        </p>
+                                        <div className="flex gap-3 pt-2">
+                                            <input
+                                                type="file"
+                                                ref={logoInputRef}
+                                                className="hidden"
+                                                accept="image/*"
+                                                onChange={handleLogoUpload}
+                                            />
+                                            <Button
+                                                onClick={() => logoInputRef.current?.click()}
+                                                disabled={isUploadingLogo}
+                                                className="h-9 px-4 text-xs bg-slate-900 text-white rounded-lg hover:bg-slate-800"
+                                            >
+                                                {isUploadingLogo ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Upload className="w-3 h-3 mr-2" />}
+                                                {siteLogo ? 'Replace Logo' : 'Upload Logo'}
+                                            </Button>
+                                            {siteLogo && (
+                                                <Button
+                                                    onClick={() => setSiteLogo(null)}
+                                                    variant="outline"
+                                                    className="h-9 px-4 text-xs border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50"
+                                                >
+                                                    Remove
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Session Management */}
                             <div className="bg-white rounded-[2rem] border border-rose-100 p-8 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 p-8 opacity-5">
@@ -348,6 +527,6 @@ export default function AdminSettingsPage() {
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

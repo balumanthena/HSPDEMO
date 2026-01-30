@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { PageHeader } from '@/components/ui/PageHeader';
 import { supabase } from "@/lib/supabase";
 import { Metadata } from "next";
 import { PlayCircle } from "lucide-react";
@@ -65,23 +66,19 @@ export default async function VideosPage() {
         <main className="min-h-screen bg-gray-50 flex flex-col">
             <Navbar />
 
-            <div className="bg-white pt-32 pb-16 border-b border-gray-100">
-                <div className="container mx-auto px-4 md:px-6 text-center">
-                    <span className="text-secondary font-semibold tracking-widest text-sm uppercase mb-2 block">Patient Education</span>
-                    <h1 className="text-4xl font-bold text-text-primary mb-6">Video Library</h1>
-                    <p className="max-w-3xl mx-auto text-text-muted text-lg">
-                        Visual guides and expert insights to help you make informed health decisions.
-                    </p>
-                </div>
-            </div>
+            <PageHeader
+                title="Video"
+                highlight="Library"
+                description="Visual guides, expert talks, and hospital tours to help you make informed health decisions."
+            />
 
-            <div className="container mx-auto px-4 md:px-6 py-16 flex-grow">
+            <div className="container mx-auto px-4 md:px-6 relative z-20 -mt-12 md:-mt-24 mb-12 md:mb-24">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {videos.map((video: any) => {
                         const videoId = getYouTubeId(video.youtube_url);
                         return (
-                            <div key={video.id} className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full hover:-translate-y-1">
-                                <div className="relative w-full pb-[56.25%] bg-black">
+                            <div key={video.id} className="group bg-white rounded-[2rem] overflow-hidden shadow-xl shadow-slate-200/50 hover:shadow-2xl transition-all duration-300 border border-slate-100 flex flex-col h-full hover:scale-[1.02]">
+                                <div className="relative w-full pb-[56.25%] bg-slate-900">
                                     {videoId ? (
                                         <iframe
                                             src={`https://www.youtube.com/embed/${videoId}`}
@@ -97,14 +94,14 @@ export default async function VideosPage() {
                                     )}
                                 </div>
 
-                                <div className="p-6 flex flex-col flex-grow">
-                                    <span className="inline-block px-3 py-1 rounded-full bg-primary/5 text-primary text-xs font-semibold mb-3 w-fit">
+                                <div className="p-8 flex flex-col flex-grow">
+                                    <span className="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold tracking-widest uppercase mb-4 w-fit">
                                         {video.category || 'General Health'}
                                     </span>
-                                    <h3 className="text-xl font-bold text-text-primary mb-3 leading-snug group-hover:text-primary transition-colors">
+                                    <h3 className="text-xl font-bold text-slate-900 mb-4 leading-snug group-hover:text-primary transition-colors font-serif">
                                         {video.title}
                                     </h3>
-                                    <p className="text-text-muted text-sm line-clamp-3">
+                                    <p className="text-slate-500 text-sm leading-relaxed line-clamp-3">
                                         {video.description}
                                     </p>
                                 </div>

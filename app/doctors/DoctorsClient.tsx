@@ -8,6 +8,10 @@ import { Footer } from "@/components/layout/Footer";
 
 // Fallback is passed from parent, but we can keep types here or import them.
 
+import { PageHeader } from '@/components/ui/PageHeader';
+
+// ... existing imports ...
+
 export default function DoctorsClient({ initialDoctors }: { initialDoctors: Doctor[] }) {
     const [selectedSpec, setSelectedSpec] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
@@ -23,37 +27,38 @@ export default function DoctorsClient({ initialDoctors }: { initialDoctors: Doct
     });
 
     return (
-        <main className="min-h-screen bg-gray-50 flex flex-col">
+        <main className="min-h-screen bg-white flex flex-col">
             <Navbar />
 
-            <div className="bg-primary/5 pt-32 pb-12">
-                <div className="container mx-auto px-4 md:px-6">
-                    <h1 className="text-4xl font-bold text-text-primary mb-4 text-center">Find a Doctor</h1>
-                    <p className="text-center text-text-muted max-w-2xl mx-auto mb-8">
-                        Browse our team of expert specialists. dedicated to providing the best medical care.
-                    </p>
+            <PageHeader
+                title="Find a"
+                highlight="Specialist"
+                description="Browse our team of expert doctors dedicated to providing world-class medical care."
+            />
 
-                    {/* Search & Filter */}
-                    <div className="max-w-4xl mx-auto space-y-4">
+            {/* Search & Filter Section */}
+            <div className="container mx-auto px-4 md:px-6 -mt-12 md:-mt-24 relative z-20 mb-12 md:mb-16">
+                <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 p-6 md:p-8 border border-slate-100">
+                    <div className="max-w-4xl mx-auto space-y-6">
                         <div className="relative">
-                            <Search className="absolute left-4 top-3.5 text-gray-400 w-5 h-5" />
+                            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                             <input
                                 type="text"
                                 placeholder="Search by name or specialization..."
-                                className="w-full pl-12 pr-4 py-3 rounded-xl border border-border shadow-sm focus:ring-2 focus:ring-primary outline-none"
+                                className="w-full pl-14 pr-6 py-4 rounded-xl bg-gray-50 border-transparent focus:bg-white focus:border-primary/20 focus:ring-4 focus:ring-primary/5 transition-all outline-none text-lg"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
 
-                        <div className="flex flex-wrap gap-2 justify-center">
+                        <div className="flex flex-wrap gap-3 justify-center">
                             {specializations.map(spec => (
                                 <button
                                     key={spec}
                                     onClick={() => setSelectedSpec(spec)}
-                                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedSpec === spec
-                                        ? 'bg-primary text-white shadow-md'
-                                        : 'bg-white text-text-muted hover:bg-gray-100 border border-gray-200'
+                                    className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${selectedSpec === spec
+                                        ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
+                                        : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                                         }`}
                                 >
                                     {spec}
